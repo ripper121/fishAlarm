@@ -1,5 +1,6 @@
 package uk23.ripper121.com.fishalarm;
 
+import android.app.Service;
 import android.content.Context;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
@@ -14,6 +15,7 @@ import android.util.Log;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -37,7 +39,6 @@ public class MainActivity extends Activity {
     public ScrollView mScrollView;
     public static Handler mUiHandler = null;
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -47,6 +48,23 @@ public class MainActivity extends Activity {
         text2 = (TextView) findViewById(R.id.textView2);
         text2.setGravity(Gravity.CENTER_HORIZONTAL);
         text2.setText("IP: " + getIpAddress() + " Port:8080");
+
+
+        final Intent service = new Intent(this, MyService.class);
+
+        final Button buttonStart = (Button) findViewById(R.id.start_service);
+        buttonStart.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                startService(service);
+            }
+        });
+
+        final Button buttonStop = (Button) findViewById(R.id.stop_service);
+        buttonStop.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                stopService(service);
+            }
+        });
 
         mScrollView = (ScrollView) findViewById(R.id.SCROLLER_ID);
         mUiHandler = new Handler() // Receive messages from service class
@@ -109,15 +127,6 @@ public class MainActivity extends Activity {
                 mScrollView.smoothScrollTo(0, text1.getBottom());
             }
         });
-    }
-
-    public void onClickStartServie(View V){
-        text1.setText("");
-        startService(new Intent(this, MyService.class));
-    }
-    public void onClickStopService(View V)
-    {
-        stopService(new Intent(this, MyService.class));
     }
 
     @Override

@@ -1,167 +1,151 @@
 package uk23.ripper121.com.fishalarm;
+import android.app.IntentService;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.os.AsyncTask;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
-import android.support.v4.app.NotificationCompat;
+import android.os.Process;
 import android.util.Log;
 import android.widget.Toast;
 
+import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketException;
+import java.util.Date;
 
 public class MyService extends Service{
 
-    private static final String TAG = "MyService";
 
-    //used for getting the handler from other class for sending messages
-    public static Handler 		mMyServiceHandler 			= null;
-    public static Handler       serverHandler 			= null;
-    //used for keep track on Android running status
-    public static Boolean 		mIsServiceRunning 			= false;
 
-    public static boolean runUDP = true;
-    public static DatagramSocket socket = null;
-    public static DatagramPacket packet = null;
-
+    private final static String TAG = MainActivity.class.getSimpleName();
+    static final int UdpServerPORT = 8080;
+    private boolean serverRunning = true;
+    DatagramSocket socket;
     public static NotificationManager notificationManager = null;
 
-
-
-    @Override
-    public IBinder onBind(Intent arg0) {
-        return null;
-    }
+    private Looper mServiceLooper;
+    private ServiceHandler mServiceHandler;
 
     @Override
     public void onCreate() {
-        Log.d(TAG, "onCreate");
-    }
+        // To avoid cpu-blocking, we create a background handler to run our service
+        HandlerThread thread = new HandlerThread("TutorialService", Process.THREAD_PRIORITY_BACKGROUND);
+        // start the new handler thread
+        thread.start();
 
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        try
-        {
-            mIsServiceRunning = true; // set service running status = true
-            MyThread myThread = new MyThread();
-            myThread.start();
-
-            runUDP=true;
-            Thread myServer = new Thread(new Server());
-            myServer.start();
-            Thread.sleep(500);
-            generateNotification(MyService.this, "Fish Alarm Running",0);
-        }
-        catch (InterruptedException e)
-        {
-            updatetrack("Server: " + e.getMessage() +"\n");
-        }
-        //Toast.makeText(this, "Congrats! My Service Started", Toast.LENGTH_SHORT).show();
-        // We need to return if we want to handle this service explicitly.
-        return START_STICKY;
+        mServiceLooper = thread.getLooper();
+        // start the service using the background handler
+        mServiceHandler = new ServiceHandler(mServiceLooper);
+        serverRunning = true;
+        generateNotification(MyService.this, "Fish Alarm Running",0);
     }
 
     @Override
     public void onDestroy() {
-        runUDP = false;
-        try {
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        try {
-            try {
-                socket.disconnect();
-                socket.close();
-            } catch (Exception ignore) {}
-            updatetrack("Server: Shutdown!");
-            Log.d(TAG, "onDestroy");
-            notificationManager.cancelAll();
-            notificationManager = null;
-            mIsServiceRunning = false; // make it false, as the service is already destroyed.
-        } catch (Exception ignore) {}
-
+        notificationManager.cancel(0);
+        serverRunning = false;
+        super.onDestroy();
     }
 
-    //Your inner thread class is here to getting response from Activity and processing them
-    class MyThread extends Thread
-    {
-        private static final String INNER_TAG = "MyThread";
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        Toast.makeText(this, "onStartCommand", Toast.LENGTH_SHORT).show();
 
-        public void run()
-        {
-            this.setName(INNER_TAG);
+        // call a new service handler. The service ID can be used to identify the service
+        Message message = mServiceHandler.obtainMessage();
+        message.arg1 = startId;
+        mServiceHandler.sendMessage(message);
+        generateNotification(MyService.this, "New Fish!",0);
+        return START_STICKY;
+    }
 
-            // Prepare the looper before creating the handler.
-            Looper.prepare();
-            mMyServiceHandler = new Handler()
-            {
-                //here we will receive messages from activity(using sendMessage() from activity)
-                public void handleMessage(Message msg)
-                {
-                    Log.i("BackgroundThread","handleMessage(Message msg)" );
-                    switch(msg.what)
-                    {
-                        case 0: // we sent message with what value =0 from the activity. here it is
-                            //Reply to the activity from here using same process handle.sendMessage()
-                            //So first get the Activity handler then send the message
-                            break;
-                        case 1:
-                            if(null != MainActivity.mUiHandler)
-                            {
-                                //first build the message and send.
-                                //put a integer value here and get it from the Activity handler
-                                //For Example: lets use 0 (msg.what = 0;)
-                                //for receiving service running status in the activity
-                                Message msgToActivity = new Message();
-                                msgToActivity.what = 0;
-                                if(true ==mIsServiceRunning)
-                                    msgToActivity.obj  = "Service Running!" + msg.obj ; // you can put extra message here
-                                else
-                                    msgToActivity.obj  = "Service is not Running!"; // you can put extra message here
+    protected void showToast(final String msg){
+        //gets the main thread
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                // run this code in the main thread
+                Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
 
-                                MainActivity.mUiHandler.sendMessage(msgToActivity);
-                            }
-                            break;
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
 
-                        default:
-                            break;
-                    }
+    // Object responsible for
+    private final class ServiceHandler extends Handler {
+
+        public ServiceHandler(Looper looper) {
+            super(looper);
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            // Well calling mServiceHandler.sendMessage(message); from onStartCommand,
+            // this method will be called.
+
+            // Add your cpu-blocking activity here
+
+            showToast("Starting IntentService");
+
+            try {
+                //updateState("Starting UDP Server");
+                socket = new DatagramSocket(UdpServerPORT);
+
+                //updateState("UDP Server is running");
+                Log.e(TAG, "UDP Server is running");
+
+                while(serverRunning){
+                    byte[] buf = new byte[256];
+
+                    // receive request
+                    DatagramPacket packet = new DatagramPacket(buf, buf.length);
+
+                    socket.receive(packet);     //this code block the program flow
+
+                    // send the response to the client at "address" and "port"
+                    InetAddress address = packet.getAddress();
+                    int port = packet.getPort();
+
+                    //updatePrompt("Request from: " + address + ":" + port + "\n");
+
+                    String dString = new Date().toString() + "\n"
+                            + "Your address " + address.toString() + ":" + String.valueOf(port);
+                    buf = dString.getBytes();
+                    packet = new DatagramPacket(buf, buf.length, address, port);
+                    socket.send(packet);
+                    generateNotification(MyService.this, "New Fish!",1);
+
                 }
-            };
 
-            serverHandler = new Handler() {
-                @Override
-                public void handleMessage(Message msg) {
-                    String text = (String) msg.obj;
-                    if(null != MainActivity.mUiHandler)
-                    {
-                        Message msgToActivity = new Message();
-                        msgToActivity.what = 0;
-                        if(true ==mIsServiceRunning)
-                            msgToActivity.obj  = text ;
-                        else
-                            msgToActivity.obj  = "Service is not Running";
+                Log.e(TAG, "UDP Server ended");
 
-                        MainActivity.mUiHandler.sendMessage(msgToActivity);
-                    }
-                    if(text.contains("Alarm")) {
-                        generateNotification(MyService.this, "New Fish!",1);
-                    }
-
+            } catch (SocketException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                if(socket != null){
+                    socket.close();
+                    Log.e(TAG, "socket.close()");
                 }
-            };
-
-            Looper.loop();
-
+            }
+            showToast("Finishing Service, id: " + msg.arg1);
+            // the msg.arg1 is the startId used in the onStartCommand, so we can track the running sevice here.
+            stopSelf(msg.arg1);
         }
     }
 
@@ -196,50 +180,6 @@ public class MyService extends Service{
         notificationManager.notify(id, notification);
     }
 
-    public void updatetrack(String s){
-        Message msg = new Message();
-        msg.obj = s;
-        serverHandler.sendMessage(msg);
-    }
-
-
-    public class Server implements Runnable {
-        @Override
-        public void run() {
-            String SERVERIP = "0.0.0.0";
-            Integer SERVERPORT = 8080;
-            InetAddress serverAddr=null;
-            try {
-                updatetrack("Server: Run");
-                serverAddr = InetAddress.getByName(SERVERIP);
-                updatetrack("Server: Connecting");
-                try {
-                    socket.disconnect();
-                    socket.close();
-                } catch (Exception ignore) {}
-                socket = new DatagramSocket(SERVERPORT, serverAddr);
-
-                byte[] buf = new byte[17];
-                packet = new DatagramPacket(buf, buf.length);
-
-                updatetrack("Server: Receiving");
-                while (runUDP) {
-                    if(!socket.isClosed()) {
-                        try {
-                            socket.receive(packet);
-                            String msg = new String(packet.getData());
-                            buf = new byte[17];
-                            packet = new DatagramPacket(buf, buf.length);
-                            updatetrack(msg);
-                        } catch (Exception e) {
-                            updatetrack("Server: " + e.getMessage() +"\n");
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                updatetrack("Server: " + e.getMessage() +"\n");
-            }
-        }}
 
 
 }

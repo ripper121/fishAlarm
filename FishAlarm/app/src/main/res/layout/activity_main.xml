@@ -33,26 +33,25 @@
     </ScrollView>
 
     <Button
+        android:id="@+id/start_service"
         android:layout_width="100dp"
         android:layout_height="wrap_content"
-        android:text="RUN"
-        android:id="@+id/start_service"
         android:layout_alignParentBottom="true"
         android:background="#ff75c0c7"
-        android:textColor="#fff2f5f4"
-        android:onClick="onClickStartServie" />
+        android:text="RUN"
+        android:textColor="#fff2f5f4" />
 
     <Button
         android:layout_width="100dp"
         android:layout_height="wrap_content"
         android:text="Stop"
         android:id="@+id/stop_service"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentRight="true"
-        android:layout_alignParentEnd="true"
         android:background="#ffee4d2e"
         android:textColor="#fff2f5f4"
-        android:onClick="onClickStopService" />
+        android:onClick="onClickStopService"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true" />
 
 
 
