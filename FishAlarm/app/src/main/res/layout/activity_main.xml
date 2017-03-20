@@ -50,9 +50,19 @@
         android:textColor="#fff2f5f4"
         android:onClick="onClickStopService"
         android:layout_alignParentBottom="true"
-        android:layout_alignParentRight="true"
-        android:layout_alignParentEnd="true" />
+        android:layout_centerHorizontal="true" />
 
+    <Button
+        android:id="@+id/buttonAlarm"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentRight="true"
+        android:background="#1cb992"
+        android:onClick="onClickStopService"
+        android:text="Alarm Off"
+        android:textColor="#fff2f5f4" />
 
 
 </RelativeLayout>
