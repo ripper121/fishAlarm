@@ -1,13 +1,11 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 22
+    compileSdkVersion 21
     buildToolsVersion '25.0.0'
-
     defaultConfig {
         applicationId "uk23.ripper121.com.fishalarm"
-        minSdkVersion 8
-        targetSdkVersion 22
+        minSdkVersion 21
         versionCode 1
         versionName "1.0"
     }
@@ -17,9 +15,11 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    productFlavors {
+    }
 }
 
 dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
-    compile 'com.android.support:appcompat-v7:22.2.1'
+    compile 'com.android.support:appcompat-v7:21.0.0'
 }

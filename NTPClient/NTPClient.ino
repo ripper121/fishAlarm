@@ -1,29 +1,14 @@
-/*
-
-  Udp NTP Client
-
-  Get the time from a Network Time Protocol (NTP) time server
-  Demonstrates use of UDP sendPacket and ReceivePacket
-  For more on NTP time servers and the messages needed to communicate with them,
-  see http://en.wikipedia.org/wiki/Network_Time_Protocol
-
-  created 4 Sep 2010
-  by Michael Margolis
-  modified 9 Apr 2012
-  by Tom Igoe
-  updated for the ESP8266 12 Apr 2015
-  by Ivan Grokhotkov
-
-  This code is in the public domain.
-
-*/
-
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include <Adafruit_NeoPixel.h>
+// Required for LIGHT_SLEEP_T delay mode
+extern "C" {
+#include "user_interface.h"
+}
 // constants won't change. They're used here to
 // set pin numbers:
-const int buttonPin = 5;     // the number of the pushbutton pin
+#define SOCKETPLUG            5
+#define BUTTON                12
 #define LED_PIN               13
 #define NUMPIXELS             1
 // variables will change:
@@ -31,14 +16,14 @@ int buttonState = 0;         // variable for reading the pushbutton status
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 
-char ssid[] = "zwe_development";  //  your network SSID (name)
-char pass[] = "zwaveeurope";       // your network password
+char ssid[] = "AndroidAP";  //  your network SSID (name)
+char pass[] = "12345678";       // your network password
 
 unsigned int localPort = 2390;      // local port to listen for UDP packets
 
 IPAddress serverIP; // time.nist.gov NTP server address
-const char* serverName = "192.168.10.74";
-const int port = 123;
+const char* serverName = "192.168.43.1";
+const int port = 8080;
 
 // A UDP instance to let us send and receive packets over UDP
 WiFiUDP udp;
@@ -47,22 +32,54 @@ void setup()
 {
   pixels.begin();
   // initialize the pushbutton pin as an input:
-  pinMode(buttonPin, INPUT_PULLUP);
+  pinMode(SOCKETPLUG, INPUT_PULLUP);
+  pinMode(BUTTON, INPUT_PULLUP);
   setPixel(pixels.Color(255, 0, 0));
   delay(1000);
   setPixel(pixels.Color(0, 0, 0));
   Serial.begin(115200);
   Serial.println();
   Serial.println();
+}
 
+void loop()
+{
+  if (digitalRead(SOCKETPLUG) == LOW || digitalRead(BUTTON) == LOW ) {
+    // turn LED on:
+    connectWifi();
+    setPixel(pixels.Color(0, 0, 255));
+    Serial.println("Alarm");
+    sendNTPpacket(serverIP, port);
+    // wait to see if a reply is available
+    delay(1000);
+  } else {
+    // turn LED off:
+    setPixel(pixels.Color(0, 0, 0));
+    WiFi.disconnect();
+    WiFi.forceSleepBegin();
+    delay(10);
+  }
+}
+
+void connectWifi()
+{
+  WiFi.forceSleepWake();
+  delay(1);
   // We start by connecting to a WiFi network
   Serial.print("Connecting to ");
   Serial.println(ssid);
+  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, pass);
-
+  bool toggleLed = true;
   while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
+    delay(200);
     Serial.print(".");
+    if (toggleLed) {
+      setPixel(pixels.Color(0, 0, 255));
+    } else {
+      setPixel(pixels.Color(0, 0, 0));
+    }
+    toggleLed = !toggleLed;
   }
   Serial.println("");
 
@@ -76,26 +93,6 @@ void setup()
   Serial.println(udp.localPort());
   //get a random server from the pool
   WiFi.hostByName(serverName, serverIP);
-}
-
-void loop()
-{
-  // read the state of the pushbutton value:
-  buttonState = digitalRead(buttonPin);
-
-  // check if the pushbutton is pressed.
-  // if it is, the buttonState is HIGH:
-  if (buttonState == LOW) {
-    // turn LED on:
-    setPixel(pixels.Color(0, 0, 255));
-    Serial.println("Bit");
-    sendNTPpacket(serverIP,port);
-    // wait to see if a reply is available
-    delay(1000);
-  } else {
-    // turn LED off:
-    setPixel(pixels.Color(0, 0, 0));
-  }
 }
 
 void setPixel(uint32_t pixelColor) {

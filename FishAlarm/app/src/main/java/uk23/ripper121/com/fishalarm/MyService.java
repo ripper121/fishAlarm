@@ -7,7 +7,6 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.hardware.Camera;
-import android.media.MediaPlayer;
 import android.media.RingtoneManager;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -22,6 +21,7 @@ import android.util.Log;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetSocketAddress;
 import java.net.SocketException;
 
 public class MyService extends Service {
@@ -65,6 +65,10 @@ public class MyService extends Service {
         generateNotification(MyService.this, "Fish Alarm Running", 0, false);
         notificationManager.cancelAll();
         sendBroadcastMessage("Service stopped");
+        try {
+            Thread.sleep(500);
+        } catch (Exception e) {
+        }
         super.onDestroy();
     }
 
@@ -106,7 +110,9 @@ public class MyService extends Service {
 
             try {
                 //updateState("Starting UDP Server");
-                socket = new DatagramSocket(UdpServerPORT);
+                socket = new DatagramSocket(null);
+                socket.setReuseAddress(true);
+                socket.bind(new InetSocketAddress(UdpServerPORT));
                 sendBroadcastMessage("Server socket created");
                 //updateState("UDP Server is running");
                 Log.e(TAG, "UDP Server is running");
@@ -144,16 +150,21 @@ public class MyService extends Service {
     }
 
     private void generateNotification(Context context, String message, Integer id, boolean onGoing) {
-        int icon = R.drawable.notification_template_icon_bg;
         long when = System.currentTimeMillis();
         notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        Notification notification = new Notification(icon, message, when);
-
+        Notification notification = null;
         String title = "Fish Alarm!";
-
         Intent notificationIntent = new Intent(context, MainActivity.class);
+        int icon = 0;
+
+        if (onGoing)
+            icon = android.R.drawable.ic_dialog_info;
+        else
+            icon = android.R.drawable.ic_dialog_alert;
+
         try {
             if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.HONEYCOMB) {
+                notification = new Notification(icon, message, when);
                 // set intent so it does not start a new activity
                 notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 PendingIntent intent = PendingIntent.getActivity(context, 0, notificationIntent, 0);
@@ -205,7 +216,7 @@ public class MyService extends Service {
 
     private void turnOnFlash() {
         Camera camera = null;
-        Camera.Parameters params  = null;
+        Camera.Parameters params = null;
         if (camera == null) {
             try {
                 camera = Camera.open();
